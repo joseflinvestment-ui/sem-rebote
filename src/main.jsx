@@ -19,9 +19,9 @@ const QUESTIONS = [
 
 const MEAL_POOL = [
   { name: "Café da manhã", food: "Ovos mexidos + banana + aveia", tags: ["Ovo"] },
-  { name: "Café da manhã", food: "Tapioca + frango desfiado + fruta", tags: ["Trigo"] },
+  { name: "Café da manhã", food: "Tapioca + frango desfiado + fruta", tags: [] },
   { name: "Café da manhã", food: "Aveia + banana + pasta de amendoim", tags: ["Amendoim"] },
-  { name: "Café da manhã", food: "Pão integral + ovos + fruta", tags: ["Ovo", "Trigo"] },
+  { name: "Café da manhã", food: "Pão integral + ovos + fruta", tags: ["Ovo", "Glúten", "Trigo"] },
   { name: "Almoço", food: "Frango grelhado + arroz + feijão + legumes", tags: [] },
   { name: "Almoço", food: "Carne magra + batata + salada variada", tags: [] },
   { name: "Almoço", food: "Peixe + arroz + feijão + legumes", tags: ["Frutos do mar"] },
@@ -39,6 +39,18 @@ const MEAL_POOL = [
 ];
 
 const STORAGE = "calculadora-sem-rebote-v2";
+
+const ALLERGEN_BLOCKS = {
+  "Leite": ["Leite", "Lactose"],
+  "Lactose": ["Leite", "Lactose"],
+  "Glúten": ["Glúten", "Trigo"],
+  "Trigo": ["Trigo", "Glúten"],
+  "Ovo": ["Ovo"],
+  "Amendoim": ["Amendoim"],
+  "Castanhas": ["Castanhas"],
+  "Frutos do mar": ["Frutos do mar"],
+  "Soja": ["Soja"]
+};
 
 function estimate(data) {
   const weight = Number(data.weight) || 0;
@@ -59,7 +71,7 @@ function estimate(data) {
 
 function compatibleMeals(data) {
   const allergy = data.allergies;
-  const blocked = allergy && allergy !== "Nenhuma" ? [allergy] : [];
+  const blocked = allergy && allergy !== "Nenhuma" ? (ALLERGEN_BLOCKS[allergy] || [allergy]) : [];
   const filtered = MEAL_POOL.filter(m => !m.tags.some(tag => blocked.includes(tag)));
   const names = data.meals === "2" ? ["Café da manhã", "Almoço"] :
     data.meals === "3" ? ["Café da manhã", "Almoço", "Jantar"] :
@@ -112,6 +124,10 @@ function App() {
     if (!question) return;
     const value = data[question.key];
     if (value === undefined || value === "") return;
+    if (question.type === "number") {
+      const numeric = Number(value);
+      if (!Number.isFinite(numeric) || numeric <= 0) return;
+    }
     if (screen < QUESTIONS.length) {
       setScreen(screen + 1);
     } else {
@@ -130,7 +146,10 @@ function App() {
 
   function regenerate(index) {
     const current = menu[index];
-    const choices = MEAL_POOL.filter(m => m.name === current.name && !(data.allergies && data.allergies !== "Nenhuma" && m.tags.includes(data.allergies)));
+    const blocked = data.allergies && data.allergies !== "Nenhuma"
+      ? (ALLERGEN_BLOCKS[data.allergies] || [data.allergies])
+      : [];
+    const choices = MEAL_POOL.filter(m => m.name === current.name && !m.tags.some(tag => blocked.includes(tag)));
     if (!choices.length) return;
     const currentIndex = choices.findIndex(x => x.food === current.food);
     const nextMeal = choices[(currentIndex + 1) % choices.length];
